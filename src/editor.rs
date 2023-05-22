@@ -57,20 +57,6 @@ impl Editor {
         }
     }
 
-    fn refresh_screen(&mut self) -> Result<(), std::io::Error> {
-        let _result = queue!(stdout(), cursor::Hide);
-        Terminal::cursor_position(&mut self.terminal, &Position::default());
-        if self.should_quit {
-            Terminal::clear_screen(&mut self.terminal);
-            println!("Goodbye.\r");
-        } else {
-            self.draw_rows();
-            Terminal::cursor_position(&mut self.terminal, &self.cursor_position);
-        }
-        Terminal::cursor_show(&mut self.terminal);
-        Terminal::flush(&mut self.terminal)
-    }
-
     //Private keyboard processor
     fn process_keypress(&mut self) -> Result<(), std::io::Error> {
         let actual_key: KeyCode = Terminal::read_key();
@@ -111,10 +97,14 @@ impl Editor {
     }
 
     fn move_cursor(&mut self, key_selection: KeyCode) {
+        let terminal_height = self.terminal.size().height as usize;
         let Position { mut y, mut x } = self.cursor_position;
-        let size = self.terminal.size();
         let height = self.document.len();
-        let width = size.width.saturating_sub(1) as usize;
+        let mut width = if let Some(row) = self.document.row(y) {
+            row.len()
+        } else {
+            0
+        };
         match key_selection {
             KeyCode::Up => y = y.saturating_sub(1),
             KeyCode::Down => {
@@ -128,13 +118,50 @@ impl Editor {
                     x = x.saturating_add(1);
                 }
             }
-            KeyCode::PageUp => y = 0,
-            KeyCode::PageDown => y = height,
+            KeyCode::PageUp => {
+                y = if y > terminal_height {
+                    y - terminal_height
+                } else {
+                    0
+                }
+            },
+            KeyCode::PageDown => {
+                y = if y.saturating_add(terminal_height) < height {
+                    y + terminal_height as usize
+                } else {
+                    height
+                }
+            },
             KeyCode::Home => x = 0,
             KeyCode::End => x = width,
             _ => (),
         }
+        width = if let Some(row) = self.document.row(y) {
+            row.len()
+        } else {
+            0
+        };
+        if x > width {
+            x = width;
+        }
         self.cursor_position = Position { x, y }
+    }
+
+    fn refresh_screen(&mut self) -> Result<(), std::io::Error> {
+        (queue!(stdout(), cursor::Hide)).unwrap();
+        Terminal::cursor_position(&Position::default());
+        if self.should_quit {
+            Terminal::clear_screen();
+            println!("Goodbye.\r");
+        } else {
+            self.draw_rows();
+            Terminal::cursor_position(&Position{
+                x: self.cursor_position.x.saturating_sub(self.offset.x),
+                y: self.cursor_position.y.saturating_sub(self.offset.y),
+            });
+        }
+        Terminal::cursor_show();
+        Terminal::flush()
     }
 
     fn draw_welcome_message(&self) {
@@ -159,7 +186,7 @@ impl Editor {
     fn draw_rows(&mut self) {
         let height = self.terminal.size().height;
         for terminal_row in 0..height - 1 {
-            Terminal::clear_current_line(&mut self.terminal);
+            Terminal::clear_current_line();
             if let Some(row) = self.document.row(terminal_row as usize + self.offset.y) {
                 self.draw_row(row);
             } else if self.document.is_empty() && terminal_row == height / 3 {
