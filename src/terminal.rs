@@ -1,4 +1,4 @@
-use std::io::{stdout, Stdout, Write};
+use std::io::{stdout, Write};
 
 use crossterm::{
     cursor,
@@ -16,7 +16,6 @@ pub struct Size {
 
 pub struct Terminal {
     size: Size,
-    stdout: Stdout,
 }
 
 impl Terminal {
@@ -28,7 +27,6 @@ impl Terminal {
                 width: size.0,
                 height: size.1,
             },
-            stdout: stdout(),
         })
     }
 
@@ -36,21 +34,19 @@ impl Terminal {
         &self.size
     }
 
-    pub fn clear_screen(&mut self) {
-        let _result = queue!(self.stdout, Clear(ClearType::All));
+    pub fn clear_screen() {
+        (queue!(stdout(), Clear(ClearType::All))).unwrap();
     }
 
-    pub fn cursor_position(&mut self, position: &Position) {
-        let Position { mut x, mut y } = position;
-        x = x.saturating_add(0);
-        y = y.saturating_add(0);
-        let x = x as u16;
-        let y = y as u16;
-        let _result = queue!(self.stdout, cursor::MoveTo(x, y));
+    pub fn cursor_position(position: &Position) {
+        let Position { x, y } = position;
+        let x = *x as u16;
+        let y = *y as u16;
+        (queue!(stdout(), cursor::MoveTo(x, y))).unwrap();
     }
 
-    pub fn flush(&mut self) -> Result<(), std::io::Error> {
-        self.stdout.flush()
+    pub fn flush() -> Result<(), std::io::Error> {
+        stdout().flush()
     }
 
     pub fn read_key() -> KeyCode {
@@ -65,15 +61,15 @@ impl Terminal {
         }
     }
 
-    pub fn cursor_hide(&mut self) {
-        let _result = queue!(self.stdout, cursor::Hide);
+    pub fn cursor_hide() {
+        (queue!(stdout(), cursor::Hide)).unwrap();
     }
 
-    pub fn cursor_show(&mut self) {
-        let _result = queue!(self.stdout, cursor::Show);
+    pub fn cursor_show() {
+        (queue!(stdout(), cursor::Show)).unwrap();
     }
 
-    pub fn clear_current_line(&mut self) {
-        let _result = queue!(self.stdout, Clear(ClearType::CurrentLine));
+    pub fn clear_current_line() {
+        (queue!(stdout(), Clear(ClearType::CurrentLine))).unwrap();
     }
 }
