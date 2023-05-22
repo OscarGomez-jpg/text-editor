@@ -49,6 +49,7 @@ impl Editor {
                 die(&error);
             }
             if self.should_quit {
+                (crossterm::terminal::disable_raw_mode()).unwrap();
                 break;
             }
             if let Err(error) = self.process_keypress() {
@@ -112,10 +113,24 @@ impl Editor {
                     y = y.saturating_add(1);
                 }
             }
-            KeyCode::Left => x = x.saturating_sub(1),
+            KeyCode::Left => {
+                if x > 0 {
+                    x -= 1;
+                } else if y > 0 {
+                    y -= 1;
+                    if let Some(row) = self.document.row(y) {
+                        x = row.len();
+                    } else {
+                        x = 0;
+                    }
+                }
+            },
             KeyCode::Right => {
                 if x < width {
-                    x = x.saturating_add(1);
+                    x += 1;
+                } else if y < height {
+                    y += 1;
+                    x = 0;
                 }
             }
             KeyCode::PageUp => {
@@ -124,14 +139,14 @@ impl Editor {
                 } else {
                     0
                 }
-            },
+            }
             KeyCode::PageDown => {
                 y = if y.saturating_add(terminal_height) < height {
                     y + terminal_height as usize
                 } else {
                     height
                 }
-            },
+            }
             KeyCode::Home => x = 0,
             KeyCode::End => x = width,
             _ => (),
@@ -155,7 +170,7 @@ impl Editor {
             println!("Goodbye.\r");
         } else {
             self.draw_rows();
-            Terminal::cursor_position(&Position{
+            Terminal::cursor_position(&Position {
                 x: self.cursor_position.x.saturating_sub(self.offset.x),
                 y: self.cursor_position.y.saturating_sub(self.offset.y),
             });
