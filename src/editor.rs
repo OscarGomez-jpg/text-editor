@@ -1,4 +1,4 @@
-use crossterm::{cursor, event::KeyCode, queue};
+use crossterm::{cursor, event::KeyCode, queue, style::{Color, Print, ResetColor, SetBackgroundColor, SetForegroundColor}};
 use std::{
     env,
     io::{self, stdout},
@@ -6,6 +6,7 @@ use std::{
 
 use crate::{terminal::Terminal, Document, Row};
 
+const STATUS_BG_COLOR: Color = Color::Cyan;
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Default)]
@@ -112,7 +113,7 @@ impl Editor {
                 if y < height {
                     y = y.saturating_add(1);
                 }
-            }
+            },
             KeyCode::Left => {
                 if x > 0 {
                     x -= 1;
@@ -132,21 +133,21 @@ impl Editor {
                     y += 1;
                     x = 0;
                 }
-            }
+            },
             KeyCode::PageUp => {
                 y = if y > terminal_height {
                     y - terminal_height
                 } else {
                     0
                 }
-            }
+            },
             KeyCode::PageDown => {
                 y = if y.saturating_add(terminal_height) < height {
                     y + terminal_height as usize
                 } else {
                     height
                 }
-            }
+            },
             KeyCode::Home => x = 0,
             KeyCode::End => x = width,
             _ => (),
@@ -170,6 +171,8 @@ impl Editor {
             println!("Goodbye.\r");
         } else {
             self.draw_rows();
+            self.draw_status_bar();
+            self.draw_message_bar();
             Terminal::cursor_position(&Position {
                 x: self.cursor_position.x.saturating_sub(self.offset.x),
                 y: self.cursor_position.y.saturating_sub(self.offset.y),
@@ -195,12 +198,12 @@ impl Editor {
         let start = self.offset.x;
         let end = self.offset.x + width;
         let row = row.render(start, end);
-        println!("{}\r", row)
+        println!("{}\r", row);
     }
 
     fn draw_rows(&mut self) {
         let height = self.terminal.size().height;
-        for terminal_row in 0..height - 1 {
+        for terminal_row in 0..height {
             Terminal::clear_current_line();
             if let Some(row) = self.document.row(terminal_row as usize + self.offset.y) {
                 self.draw_row(row);
@@ -210,6 +213,39 @@ impl Editor {
                 println!("~\r");
             }
         }
+    }
+
+    fn draw_status_bar(&self) {
+        let mut status;
+        let width = self.terminal.size().width as usize;
+        let mut file_name = "[No Name]".to_string();
+        if let Some(name) = &self.document.file_name {
+            file_name = name.clone();
+            file_name.truncate(20);
+        }
+        status = format!("{} - {} lines", file_name, self.document.len());
+        let line_indicator = format!(
+            "{}/{}",
+            self.cursor_position.y.saturating_add(1),
+            self.document.len()
+        );
+        let len = status.len() + line_indicator.len();
+        if width > len {
+            status.push_str(&" ".repeat(width - len));
+        }
+        status = format!("{}{}", status, line_indicator);
+        status.truncate(width);
+        (queue!(
+            stdout(),
+            SetForegroundColor(Color::Black),
+            SetBackgroundColor(STATUS_BG_COLOR),
+            Print((status + "\r").to_string()),
+            ResetColor
+        )).unwrap();
+    }
+
+    fn draw_message_bar(&self) {
+        Terminal::clear_current_line();
     }
 }
 

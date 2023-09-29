@@ -2,7 +2,7 @@ use std::io::{stdout, Write};
 
 use crossterm::{
     cursor,
-    event::{read, Event, KeyCode},
+    event::{read, Event, KeyCode, KeyEventKind},
     queue,
     terminal::{self, Clear, ClearType},
 };
@@ -25,7 +25,7 @@ impl Terminal {
         Ok(Self {
             size: Size {
                 width: size.0,
-                height: size.1,
+                height: size.1.saturating_sub(2),
             },
         })
     }
@@ -53,7 +53,10 @@ impl Terminal {
         loop {
             match read() {
                 Ok(Event::Key(event)) => {
-                    return event.code;
+                    //This is to make sure that crossterm will only read when the key is pressed
+                    if let KeyEventKind::Press = event.kind {
+                        return event.code;
+                    }
                 }
                 Err(err) => panic!("{err:?}"),
                 _ => (),
