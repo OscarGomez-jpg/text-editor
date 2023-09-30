@@ -1,6 +1,6 @@
 use std::fs;
 
-use crate::Row;
+use crate::{Position, Row};
 
 #[derive(Default)]
 pub struct Document {
@@ -15,7 +15,7 @@ impl Document {
         for value in contents.lines() {
             rows.push(Row::from(value));
         }
-        Ok(Self { 
+        Ok(Self {
             rows,
             file_name: Some(filename.to_string()),
         })

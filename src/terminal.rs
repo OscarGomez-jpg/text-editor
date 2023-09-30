@@ -4,6 +4,7 @@ use crossterm::{
     cursor,
     event::{read, Event, KeyCode, KeyEventKind},
     queue,
+    style::{Color, ResetColor, SetBackgroundColor, SetForegroundColor},
     terminal::{self, Clear, ClearType},
 };
 
@@ -74,5 +75,21 @@ impl Terminal {
 
     pub fn clear_current_line() {
         (queue!(stdout(), Clear(ClearType::CurrentLine))).unwrap();
+    }
+
+    pub fn set_bg_color(color: Color) {
+        (queue!(stdout(), SetBackgroundColor(color))).unwrap();
+    }
+
+    pub fn reset_bg_color() {
+        (queue!(stdout(), ResetColor)).unwrap();
+    }
+
+    pub fn set_fg_color(color: Color) {
+        (queue!(stdout(), SetForegroundColor(color))).unwrap();
+    }
+
+    pub fn reset_fg_color() {
+        (queue!(stdout(), ResetColor)).unwrap() //I now that is repeated, but I just want to follow the logic
     }
 }

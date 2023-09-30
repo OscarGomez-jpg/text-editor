@@ -7,6 +7,7 @@ use crossterm::{
 use std::{
     env,
     io::{self, stdout},
+    time::{Duration, Instant},
 };
 
 use crate::{terminal::Terminal, Document, Row};
@@ -20,31 +21,56 @@ pub struct Position {
     pub y: usize,
 }
 
+struct StatusMessage {
+    text: String,
+    time: Instant,
+}
+
+impl StatusMessage {
+    fn from(message: String) -> Self {
+        Self {
+            text: message,
+            time: Instant::now(),
+        }
+    }
+}
+
 pub struct Editor {
     should_quit: bool,
     terminal: Terminal,
     cursor_position: Position,
     offset: Position,
     document: Document,
+    status_message: StatusMessage,
 }
 
 impl Editor {
     //Constructor
     pub fn default() -> Self {
         let args: Vec<String> = env::args().collect();
+        let mut initial_status = String::from("HELP: F8 = quit");
+
         //Opening a file, otherwise, main application
         let document = if args.len() > 1 {
             let file_name = &args[1];
-            Document::open(&file_name).unwrap_or_default()
+            let doc = Document::open(&file_name);
+            if doc.is_ok() {
+                doc.unwrap()
+            } else {
+                initial_status = format!("ERR: Could not open file: {}", file_name);
+                Document::default()
+            }
         } else {
             Document::default()
         };
+
         Self {
             should_quit: false,
             terminal: Terminal::default().expect("Jesus Christ, what have you done?"),
             document,
             cursor_position: Position::default(),
             offset: Position::default(),
+            status_message: StatusMessage::from(initial_status),
         }
     }
 
@@ -54,10 +80,12 @@ impl Editor {
             if let Err(error) = self.refresh_screen() {
                 die(&error);
             }
+
             if self.should_quit {
                 (crossterm::terminal::disable_raw_mode()).unwrap();
                 break;
             }
+
             if let Err(error) = self.process_keypress() {
                 die(&error);
             }
@@ -67,6 +95,7 @@ impl Editor {
     //Private keyboard processor
     fn process_keypress(&mut self) -> Result<(), std::io::Error> {
         let actual_key: KeyCode = Terminal::read_key();
+
         match actual_key {
             KeyCode::F(8) => self.should_quit = true,
             KeyCode::Up
@@ -79,6 +108,7 @@ impl Editor {
             | KeyCode::Home => self.move_cursor(actual_key),
             _ => (),
         }
+
         self.scroll();
         //This is used to propagate the error along the system
         Ok(())
@@ -112,6 +142,7 @@ impl Editor {
         } else {
             0
         };
+
         match key_selection {
             KeyCode::Up => y = y.saturating_sub(1),
             KeyCode::Down => {
@@ -157,20 +188,25 @@ impl Editor {
             KeyCode::End => x = width,
             _ => (),
         }
+
         width = if let Some(row) = self.document.row(y) {
             row.len()
         } else {
             0
         };
+
         if x > width {
             x = width;
         }
+
         self.cursor_position = Position { x, y }
     }
 
     fn refresh_screen(&mut self) -> Result<(), std::io::Error> {
         (queue!(stdout(), cursor::Hide)).unwrap();
+
         Terminal::cursor_position(&Position::default());
+
         if self.should_quit {
             Terminal::clear_screen();
             println!("Goodbye.\r");
@@ -183,6 +219,7 @@ impl Editor {
                 y: self.cursor_position.y.saturating_sub(self.offset.y),
             });
         }
+
         Terminal::cursor_show();
         Terminal::flush()
     }
@@ -193,8 +230,10 @@ impl Editor {
         let len = welcome_message.len();
         let padding = width.saturating_sub(len) / 2;
         let spaces = " ".repeat(padding.saturating_sub(1));
+
         welcome_message = format!("~{}{}", spaces, welcome_message);
         welcome_message.truncate(width);
+
         println!("{}\r", welcome_message);
     }
 
@@ -203,11 +242,13 @@ impl Editor {
         let start = self.offset.x;
         let end = self.offset.x + width;
         let row = row.render(start, end);
+
         println!("{}\r", row);
     }
 
     fn draw_rows(&mut self) {
         let height = self.terminal.size().height;
+
         for terminal_row in 0..height {
             Terminal::clear_current_line();
             if let Some(row) = self.document.row(terminal_row as usize + self.offset.y) {
@@ -224,34 +265,43 @@ impl Editor {
         let mut status;
         let width = self.terminal.size().width as usize;
         let mut file_name = "[No Name]".to_string();
+
         if let Some(name) = &self.document.file_name {
             file_name = name.clone();
             file_name.truncate(20);
         }
+
         status = format!("{} - {} lines", file_name, self.document.len());
+
         let line_indicator = format!(
             "{}/{}",
             self.cursor_position.y.saturating_add(1),
             self.document.len()
         );
+
         let len = status.len() + line_indicator.len();
+
         if width > len {
             status.push_str(&" ".repeat(width - len));
         }
+
         status = format!("{}{}", status, line_indicator);
+
         status.truncate(width);
-        (queue!(
-            stdout(),
-            SetForegroundColor(Color::Black),
-            SetBackgroundColor(STATUS_BG_COLOR),
-            Print((status + "\r").to_string()),
-            ResetColor
-        ))
-        .unwrap();
+
+        Terminal::set_bg_color(STATUS_BG_COLOR);
+        Terminal::reset_fg_color();
+        Terminal::reset_bg_color();
     }
 
     fn draw_message_bar(&self) {
         Terminal::clear_current_line();
+        let message = &self.status_message;
+        if Instant::now() - message.time < Duration::new(5, 0) {
+            let mut text = message.text.clone();
+            text.truncate(self.terminal.size().width as usize);
+            print!("{}", text);
+        }
     }
 }
 

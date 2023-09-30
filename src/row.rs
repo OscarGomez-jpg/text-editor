@@ -10,7 +10,7 @@ impl From<&str> for Row {
     fn from(slice: &str) -> Self {
         let mut row = Self {
             string: String::from(slice),
-            len:0,
+            len: 0,
         };
         row.update_len();
         row
@@ -22,6 +22,7 @@ impl Row {
         let end = cmp::min(end, self.string.len());
         let start = cmp::min(start, end);
         let mut result = String::new();
+
         for grapheme in self.string[..]
             .graphemes(true)
             .skip(start)
@@ -33,11 +34,12 @@ impl Row {
                 result.push_str(grapheme);
             }
         }
+
         result
     }
 
     pub fn len(&self) -> usize {
-        self.len
+        self.len //[..] == fullstring
     }
 
     fn update_len(&mut self) {
