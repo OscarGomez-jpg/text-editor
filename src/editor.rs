@@ -48,7 +48,7 @@ impl Editor {
     //Constructor
     pub fn default() -> Self {
         let args: Vec<String> = env::args().collect();
-        let mut initial_status = String::from("HELP: F9 = save | F8 = quit");
+        let mut initial_status = String::from("HELP: F5 = save | F8 = quit");
 
         //Opening a file, otherwise, main application
         let document = if args.len() > 1 {
@@ -98,14 +98,7 @@ impl Editor {
 
         match actual_key {
             KeyCode::F(8) => self.should_quit = true,
-            KeyCode::F(9) => {
-                if self.document.save().is_ok() {
-                    self.status_message =
-                        StatusMessage::from("File saved successfully.".to_string());
-                } else {
-                    self.status_message = StatusMessage::from("Error writing file!".to_string());
-                }
-            }
+            KeyCode::F(5) => self.save(),
             KeyCode::Enter => {
                 self.document.insert(&self.cursor_position, '\n');
                 self.move_cursor(KeyCode::Right);
@@ -135,6 +128,37 @@ impl Editor {
         self.scroll();
         //This is used to propagate the error along the system
         Ok(())
+    }
+
+    fn prompt(&mut self, prompt: &str) -> Result<Option<String>, std::io::Error> {
+        let mut result = String::new();
+        loop {
+            self.status_message = StatusMessage::from(format!("{}{}", prompt, result));
+            self.refresh_screen()?;
+            match Terminal::read_key() {
+                KeyCode::Backspace => {
+                    if !result.is_empty() {
+                        result.truncate(result.len() - 1);
+                    }
+                }
+                KeyCode::Char('\n') => break,
+                KeyCode::Char(c) => {
+                    if !c.is_control() {
+                        result.push(c);
+                    }
+                }
+                KeyCode::Esc => {
+                    result.truncate(0);
+                    break;
+                }
+                _ => (),
+            }
+        }
+        self.status_message = StatusMessage::from(String::new());
+        if result.is_empty() {
+            return Ok(None);
+        }
+        Ok(Some(result))
     }
 
     fn scroll(&mut self) {
@@ -247,6 +271,25 @@ impl Editor {
         Terminal::flush()
     }
 
+    fn save(&mut self) {
+        if self.document.file_name.is_none() {
+            let new_name = self.prompt("Save as: ").unwrap_or(None);
+
+            if new_name.is_none() {
+                self.status_message = StatusMessage::from("Save aborted: ".to_string());
+                return;
+            }
+
+            self.document.file_name = new_name;
+        }
+
+        if self.document.save().is_ok() {
+            self.status_message = StatusMessage::from("File saved successfully.".to_string());
+        } else {
+            self.status_message = StatusMessage::from("Error writing file!".to_string());
+        }
+    }
+
     fn draw_welcome_message(&self) {
         let mut welcome_message = format!("Voider -- version {}", VERSION);
         let width = self.terminal.size().width as usize;
@@ -287,6 +330,13 @@ impl Editor {
     fn draw_status_bar(&self) {
         let mut status;
         let width = self.terminal.size().width as usize;
+
+        let modifier_indicator = if self.document.is_dirty() {
+            " (modified)"
+        } else {
+            ""
+        };
+
         let mut file_name = "[No Name]".to_string();
 
         if let Some(name) = &self.document.file_name {
@@ -294,7 +344,12 @@ impl Editor {
             file_name.truncate(20);
         }
 
-        status = format!("{} - {} lines", file_name, self.document.len());
+        status = format!(
+            "{} - {} lines {}",
+            file_name,
+            self.document.len(),
+            modifier_indicator
+        );
 
         let line_indicator = format!(
             "{}/{}",
