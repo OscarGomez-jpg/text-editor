@@ -1,4 +1,9 @@
-use crossterm::{cursor, event::KeyCode, queue, style::Color};
+use crossterm::{
+    cursor,
+    event::{KeyCode, KeyModifiers, ModifierKeyCode},
+    queue,
+    style::Color,
+};
 use std::{
     env,
     io::{self, stdout},
@@ -43,7 +48,7 @@ impl Editor {
     //Constructor
     pub fn default() -> Self {
         let args: Vec<String> = env::args().collect();
-        let mut initial_status = String::from("HELP: F8 = quit");
+        let mut initial_status = String::from("HELP: F9 = save | F8 = quit");
 
         //Opening a file, otherwise, main application
         let document = if args.len() > 1 {
@@ -93,6 +98,18 @@ impl Editor {
 
         match actual_key {
             KeyCode::F(8) => self.should_quit = true,
+            KeyCode::F(9) => {
+                if self.document.save().is_ok() {
+                    self.status_message =
+                        StatusMessage::from("File saved successfully.".to_string());
+                } else {
+                    self.status_message = StatusMessage::from("Error writing file!".to_string());
+                }
+            }
+            KeyCode::Enter => {
+                self.document.insert(&self.cursor_position, '\n');
+                self.move_cursor(KeyCode::Right);
+            }
             KeyCode::Char(c) => {
                 self.document.insert(&self.cursor_position, c);
                 self.move_cursor(KeyCode::Right);
