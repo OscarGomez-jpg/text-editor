@@ -1,9 +1,4 @@
-use crossterm::{
-    cursor,
-    event::KeyCode,
-    queue,
-    style::{Color, Print, ResetColor, SetBackgroundColor, SetForegroundColor},
-};
+use crossterm::{cursor, event::KeyCode, queue, style::Color};
 use std::{
     env,
     io::{self, stdout},
@@ -98,6 +93,17 @@ impl Editor {
 
         match actual_key {
             KeyCode::F(8) => self.should_quit = true,
+            KeyCode::Char(c) => {
+                self.document.insert(&self.cursor_position, c);
+                self.move_cursor(KeyCode::Right);
+            }
+            KeyCode::Delete => self.document.delete(&self.cursor_position),
+            KeyCode::Backspace => {
+                if self.cursor_position.x > 0 || self.cursor_position.y > 0 {
+                    self.move_cursor(KeyCode::Left);
+                    self.document.delete(&self.cursor_position);
+                }
+            }
             KeyCode::Up
             | KeyCode::Down
             | KeyCode::Left
