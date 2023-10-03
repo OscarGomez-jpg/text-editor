@@ -1,9 +1,4 @@
-use crossterm::{
-    cursor,
-    event::{KeyCode, KeyModifiers, ModifierKeyCode},
-    queue,
-    style::Color,
-};
+use crossterm::{cursor, event::KeyCode, queue, style::Color};
 use std::{
     env,
     io::{self, stdout},
@@ -14,6 +9,7 @@ use crate::{terminal::Terminal, Document, Row};
 
 const STATUS_BG_COLOR: Color = Color::Cyan;
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+const QUIT_TIMES: u8 = 3;
 
 #[derive(Default)]
 pub struct Position {
@@ -42,6 +38,7 @@ pub struct Editor {
     offset: Position,
     document: Document,
     status_message: StatusMessage,
+    quit_times: u8,
 }
 
 impl Editor {
@@ -71,6 +68,7 @@ impl Editor {
             cursor_position: Position::default(),
             offset: Position::default(),
             status_message: StatusMessage::from(initial_status),
+            quit_times: QUIT_TIMES,
         }
     }
 
@@ -97,7 +95,17 @@ impl Editor {
         let actual_key: KeyCode = Terminal::read_key();
 
         match actual_key {
-            KeyCode::F(8) => self.should_quit = true,
+            KeyCode::F(8) => {
+                if self.quit_times > 0 && self.document.is_dirty() {
+                    self.status_message = StatusMessage::from(format!(
+                        "WARNING! File has unsaved changes. Press F8 {} more times to quit.",
+                        self.quit_times
+                    ));
+                    self.quit_times -= 1;
+                    return Ok(());
+                }
+                self.should_quit = true;
+            }
             KeyCode::F(5) => self.save(),
             KeyCode::Enter => {
                 self.document.insert(&self.cursor_position, '\n');
@@ -126,6 +134,11 @@ impl Editor {
         }
 
         self.scroll();
+
+        if self.quit_times < QUIT_TIMES {
+            self.quit_times = QUIT_TIMES;
+            self.status_message = StatusMessage::from(String::new());
+        }
         //This is used to propagate the error along the system
         Ok(())
     }
