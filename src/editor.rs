@@ -5,7 +5,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use crate::{document, terminal::Terminal, Document, Row};
+use crate::{terminal::Terminal, Document, Row};
 
 const STATUS_BG_COLOR: Color = Color::Cyan;
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -53,7 +53,7 @@ impl Editor {
             if let Ok(doc) = doc {
                 doc
             } else {
-                initial_status = format!("ERR: Could not open file: {}", file_name);
+                initial_status = format!("ERR: Could not open file: {file_name}");
                 Document::default()
             }
         } else {
@@ -145,7 +145,7 @@ impl Editor {
     fn prompt(&mut self, prompt: &str) -> Result<Option<String>, std::io::Error> {
         let mut result = String::new();
         loop {
-            self.status_message = StatusMessage::from(format!("{}{}", prompt, result));
+            self.status_message = StatusMessage::from(format!("{prompt}{result}"));
             self.refresh_screen()?;
             match Terminal::read_key() {
                 KeyCode::Backspace => result.truncate(result.len().saturating_sub(1)),
@@ -299,16 +299,16 @@ impl Editor {
     }
 
     fn draw_welcome_message(&self) {
-        let mut welcome_message = format!("Voider -- version {}", VERSION);
+        let mut welcome_message = format!("Voider -- version {VERSION}");
         let width = self.terminal.size().width as usize;
         let len = welcome_message.len();
         let padding = width.saturating_sub(len) / 2;
         let spaces = " ".repeat(padding.saturating_sub(1));
 
-        welcome_message = format!("~{}{}", spaces, welcome_message);
+        welcome_message = format!("~{spaces}{welcome_message}");
         welcome_message.truncate(width);
 
-        println!("{}\r", welcome_message);
+        println!("{welcome_message}\r");
     }
 
     fn draw_row(&self, row: &Row) {
@@ -317,7 +317,7 @@ impl Editor {
         let end = self.offset.x.saturating_add(width);
         let row = row.render(start, end);
 
-        println!("{}\r", row);
+        println!("{row}\r");
     }
 
     fn draw_rows(&mut self) {
@@ -373,7 +373,7 @@ impl Editor {
 
         status.push_str(&" ".repeat(width.saturating_sub(len)));
 
-        status = format!("{}{}", status, line_indicator);
+        status = format!("{status}{line_indicator}");
 
         status.truncate(width);
 
@@ -385,10 +385,10 @@ impl Editor {
     fn draw_message_bar(&self) {
         Terminal::clear_current_line();
         let message = &self.status_message;
-        if Instant::now() - message.time < Duration::new(5, 0) {
+        if message.time.elapsed() < Duration::new(5, 0) {
             let mut text = message.text.clone();
             text.truncate(self.terminal.size().width as usize);
-            print!("{}", text);
+            print!("{text}");
         }
     }
 }

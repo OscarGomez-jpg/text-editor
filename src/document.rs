@@ -26,20 +26,23 @@ impl Document {
         })
     }
 
+    #[must_use]
     pub fn row(&self, index: usize) -> Option<&Row> {
         self.rows.get(index)
     }
 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.rows.is_empty()
     }
 
+    #[must_use]
     pub fn len(&self) -> usize {
         self.rows.len()
     }
 
     fn insert_newline(&mut self, at: &Position) {
-        if at.y > self.len() {
+        if at.y > self.rows.len() {
             return;
         }
 
@@ -54,7 +57,7 @@ impl Document {
     }
 
     pub fn insert(&mut self, at: &Position, c: char) {
-        if at.y > self.len() {
+        if at.y > self.rows.len() {
             return;
         }
 
@@ -105,6 +108,7 @@ impl Document {
         Ok(())
     }
 
+    #[must_use]
     pub fn is_dirty(&self) -> bool {
         self.dirty
     }

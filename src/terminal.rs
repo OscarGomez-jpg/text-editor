@@ -31,7 +31,7 @@ impl Terminal {
         })
     }
 
-    pub fn size(&self) -> &Size {
+    #[must_use] pub fn size(&self) -> &Size {
         &self.size
     }
 
@@ -50,7 +50,7 @@ impl Terminal {
         stdout().flush()
     }
 
-    pub fn read_key() -> KeyCode {
+    #[must_use] pub fn read_key() -> KeyCode {
         loop {
             match read() {
                 Ok(Event::Key(event)) => {
