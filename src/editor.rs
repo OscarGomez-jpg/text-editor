@@ -11,7 +11,7 @@ const STATUS_BG_COLOR: Color = Color::Cyan;
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const QUIT_TIMES: u8 = 3;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Position {
     pub x: usize,
     pub y: usize,
@@ -45,7 +45,7 @@ impl Editor {
     //Constructor
     pub fn default() -> Self {
         let args: Vec<String> = env::args().collect();
-        let mut initial_status = String::from("HELP: F5 = save | F8 = quit");
+        let mut initial_status = String::from("HELP: F3 = find | F5 = save | F8 = quit");
 
         //Opening a file, otherwise, main application
         let document = if let Some(file_name) = args.get(1) {
@@ -105,6 +105,7 @@ impl Editor {
                 }
                 self.should_quit = true;
             }
+            KeyCode::F(3) => self.search(),
             KeyCode::F(5) => self.save(),
             KeyCode::Enter => {
                 self.document.insert(&self.cursor_position, '\n');
@@ -142,14 +143,40 @@ impl Editor {
         Ok(())
     }
 
-    fn prompt(&mut self, prompt: &str) -> Result<Option<String>, std::io::Error> {
+    fn search(&mut self) {
+        let old_position = self.cursor_position.clone();
+        if let Some(query) = self
+            .prompt("Search: ", |editor, _, query| {
+                if let Some(position) = editor.document.find(&query) {
+                    editor.cursor_position = position;
+                    editor.scroll();
+                }
+            })
+            .unwrap_or(None)
+        {
+            if let Some(position) = self.document.find(&query[..]) {
+                self.cursor_position = position;
+            } else {
+                self.status_message = StatusMessage::from(format!("Not found :{}.", query));
+            }
+        } else {
+            self.cursor_position = old_position;
+            self.scroll();
+        }
+    }
+
+    fn prompt<C>(&mut self, prompt: &str, callback: C) -> Result<Option<String>, std::io::Error>
+    where
+        C: Fn(&mut Self, KeyCode, &String),
+    {
         let mut result = String::new();
         loop {
             self.status_message = StatusMessage::from(format!("{prompt}{result}"));
             self.refresh_screen()?;
-            match Terminal::read_key() {
+            let key = Terminal::read_key();
+            match key {
                 KeyCode::Backspace => result.truncate(result.len().saturating_sub(1)),
-                KeyCode::Char('\n') => break,
+                KeyCode::Enter => break,
                 KeyCode::Char(c) => {
                     if !c.is_control() {
                         result.push(c);
@@ -161,6 +188,7 @@ impl Editor {
                 }
                 _ => (),
             }
+            callback(self, key, &result)
         }
         self.status_message = StatusMessage::from(String::new());
         if result.is_empty() {
@@ -219,7 +247,7 @@ impl Editor {
             }
             KeyCode::Right => {
                 if x < width {
-                    x = 1;
+                    x += 1;
                 } else if y < height {
                     y += 1;
                     x = 0;
@@ -281,7 +309,7 @@ impl Editor {
 
     fn save(&mut self) {
         if self.document.file_name.is_none() {
-            let new_name = self.prompt("Save as: ").unwrap_or(None);
+            let new_name = self.prompt("Save as: ", |_, _, _| {}).unwrap_or(None);
 
             if new_name.is_none() {
                 self.status_message = StatusMessage::from("Save aborted: ".to_string());
