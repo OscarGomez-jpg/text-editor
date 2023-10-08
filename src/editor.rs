@@ -1,13 +1,22 @@
-use crossterm::{cursor, event::KeyCode, queue, style::Color};
+use crossterm::{event::KeyCode, style::Color};
 use std::{
     env,
-    io::{self, stdout},
+    io::{self},
     time::{Duration, Instant},
 };
 
 use crate::{terminal::Terminal, Document, Row};
 
-const STATUS_BG_COLOR: Color = Color::Cyan;
+const STATUS_BG_COLOR: Color = Color::Rgb {
+    r: 63,
+    g: 63,
+    b: 63,
+};
+const STATUS_FG_COLOR: Color = Color::Rgb {
+    r: 239,
+    g: 239,
+    b: 239,
+};
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const QUIT_TIMES: u8 = 3;
 
@@ -305,7 +314,7 @@ impl Editor {
     }
 
     fn refresh_screen(&mut self) -> Result<(), std::io::Error> {
-        (queue!(stdout(), cursor::Hide)).unwrap();
+        Terminal::cursor_hide();
 
         Terminal::cursor_position(&Position::default());
 
@@ -417,14 +426,12 @@ impl Editor {
 
         #[allow(clippy::arithmetic_side_effects)]
         let len = status.len() + line_indicator.len();
-
         status.push_str(&" ".repeat(width.saturating_sub(len)));
-
         status = format!("{status}{line_indicator}");
-
         status.truncate(width);
-
         Terminal::set_bg_color(STATUS_BG_COLOR);
+        Terminal::set_fg_color(STATUS_FG_COLOR);
+        println!("{}\r", status);
         Terminal::reset_fg_color();
         Terminal::reset_bg_color();
     }

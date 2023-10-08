@@ -1,6 +1,6 @@
 use crossterm::{
     queue,
-    style::{Color, SetBackgroundColor, SetForegroundColor},
+    style::{Color, SetForegroundColor},
 };
 use std::{cmp, io::stdout};
 use unicode_segmentation::UnicodeSegmentation;
