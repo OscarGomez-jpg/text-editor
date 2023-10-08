@@ -11,6 +11,12 @@ const STATUS_BG_COLOR: Color = Color::Cyan;
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const QUIT_TIMES: u8 = 3;
 
+#[derive(PartialEq, Clone, Copy)]
+pub enum SearchDirection {
+    Forward,
+    Backward,
+}
+
 #[derive(Default, Clone)]
 pub struct Position {
     pub x: usize,
@@ -145,29 +151,42 @@ impl Editor {
 
     fn search(&mut self) {
         let old_position = self.cursor_position.clone();
-        if let Some(query) = self
-            .prompt("Search: ", |editor, _, query| {
-                if let Some(position) = editor.document.find(&query) {
+        let mut direction = SearchDirection::Forward;
+        let query = self
+            .prompt("Search: ", |editor, key_code, query| {
+                let mut moved = false;
+                match key_code {
+                    KeyCode::Right | KeyCode::Down => {
+                        direction = SearchDirection::Forward;
+                        editor.move_cursor(KeyCode::Right);
+                        moved = true;
+                    }
+                    KeyCode::Left | KeyCode::Up => direction = SearchDirection::Backward,
+                    _ => direction = SearchDirection::Forward,
+                }
+
+                if let Some(position) =
+                    editor
+                        .document
+                        .find(&query, &editor.cursor_position, direction)
+                {
                     editor.cursor_position = position;
                     editor.scroll();
+                } else if moved {
+                    editor.move_cursor(KeyCode::Left);
                 }
             })
-            .unwrap_or(None)
-        {
-            if let Some(position) = self.document.find(&query[..]) {
-                self.cursor_position = position;
-            } else {
-                self.status_message = StatusMessage::from(format!("Not found :{}.", query));
-            }
-        } else {
+            .unwrap_or(None);
+
+        if query.is_none() {
             self.cursor_position = old_position;
             self.scroll();
         }
     }
 
-    fn prompt<C>(&mut self, prompt: &str, callback: C) -> Result<Option<String>, std::io::Error>
+    fn prompt<C>(&mut self, prompt: &str, mut callback: C) -> Result<Option<String>, std::io::Error>
     where
-        C: Fn(&mut Self, KeyCode, &String),
+        C: FnMut(&mut Self, KeyCode, &String),
     {
         let mut result = String::new();
         loop {

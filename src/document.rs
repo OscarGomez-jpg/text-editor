@@ -1,3 +1,4 @@
+use crate::editor::SearchDirection;
 use crate::Position;
 use crate::Row;
 use std::fs;
@@ -92,12 +93,44 @@ impl Document {
         Ok(())
     }
 
-    pub fn find(&self, query: &str) -> Option<Position> {
-        for (y, row) in self.rows.iter().enumerate() {
-            if let Some(x) = row.find(query) {
-                return Some(Position { x, y });
+    pub fn find(&self, query: &str, at: &Position, direction: SearchDirection) -> Option<Position> {
+        if at.y >= self.rows.len() {
+            return None;
+        }
+
+        let mut position = Position { x: at.y, y: at.y };
+
+        let start = if direction == SearchDirection::Forward {
+            at.y
+        } else {
+            0
+        };
+
+        let end = if direction == SearchDirection::Forward {
+            self.rows.len()
+        } else {
+            at.y.saturating_add(1)
+        };
+
+        for _ in start..end {
+            if let Some(row) = self.rows.get(position.y) {
+                if let Some(x) = row.find(&query, position.x, direction) {
+                    position.x = x;
+                    return Some(position);
+                }
+
+                if direction == SearchDirection::Forward {
+                    position.y = position.y.saturating_add(1);
+                    position.x = 0;
+                } else {
+                    position.y = position.y.saturating_sub(1);
+                    position.x = self.rows[position.y].len();
+                }
+            } else {
+                return None;
             }
         }
+
         None
     }
 
