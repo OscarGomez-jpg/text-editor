@@ -1,9 +1,9 @@
 use std::io::{stdout, Write};
 
 use crossterm::{
-    cursor,
+    cursor::{self, MoveTo},
     event::{read, Event, KeyCode, KeyEventKind},
-    queue,
+    execute,
     style::{Color, ResetColor, SetBackgroundColor, SetForegroundColor},
     terminal::{self, Clear, ClearType},
 };
@@ -31,26 +31,17 @@ impl Terminal {
         })
     }
 
-    #[must_use] pub fn size(&self) -> &Size {
+    #[must_use]
+    pub fn size(&self) -> &Size {
         &self.size
-    }
-
-    pub fn clear_screen() {
-        (queue!(stdout(), Clear(ClearType::All))).unwrap();
-    }
-
-    pub fn cursor_position(position: &Position) {
-        let Position { x, y } = position;
-        let x = *x as u16;
-        let y = *y as u16;
-        (queue!(stdout(), cursor::MoveTo(x, y))).unwrap();
     }
 
     pub fn flush() -> Result<(), std::io::Error> {
         stdout().flush()
     }
 
-    #[must_use] pub fn read_key() -> KeyCode {
+    #[must_use]
+    pub fn read_key() -> KeyCode {
         loop {
             match read() {
                 Ok(Event::Key(event)) => {
@@ -65,31 +56,49 @@ impl Terminal {
         }
     }
 
+    fn execute_action(action: impl crossterm::Command) {
+        if let Err(err) = execute!(std::io::stdout(), action) {
+            eprintln!("Error al ejecutar la acción: {}", err);
+        }
+    }
+
+    pub fn clear_screen() {
+        Self::execute_action(Clear(ClearType::All));
+    }
+
+    pub fn cursor_position(position: &Position) {
+        let Position { x, y } = position;
+        let x = *x as u16;
+        let y = *y as u16;
+
+        Self::execute_action(MoveTo(x, y));
+    }
+
     pub fn cursor_hide() {
-        (queue!(stdout(), cursor::Hide)).unwrap();
+        Self::execute_action(cursor::Hide);
     }
 
     pub fn cursor_show() {
-        (queue!(stdout(), cursor::Show)).unwrap();
+        Self::execute_action(cursor::Show);
     }
 
     pub fn clear_current_line() {
-        (queue!(stdout(), Clear(ClearType::CurrentLine))).unwrap();
+        Self::execute_action(Clear(ClearType::CurrentLine));
     }
 
     pub fn set_bg_color(color: Color) {
-        (queue!(stdout(), SetBackgroundColor(color))).unwrap();
+        Self::execute_action(SetBackgroundColor(color));
     }
 
     pub fn reset_bg_color() {
-        (queue!(stdout(), ResetColor)).unwrap();
+        Self::execute_action(ResetColor);
     }
 
     pub fn set_fg_color(color: Color) {
-        (queue!(stdout(), SetForegroundColor(color))).unwrap();
+        Self::execute_action(SetForegroundColor(color));
     }
 
     pub fn reset_fg_color() {
-        (queue!(stdout(), ResetColor)).unwrap() //I now that is repeated, but I just want to follow the logic
+        Self::execute_action(ResetColor);
     }
 }

@@ -1,7 +1,11 @@
-use std::cmp;
+use crossterm::{
+    queue,
+    style::{Color, SetBackgroundColor, SetForegroundColor},
+};
+use std::{cmp, io::stdout};
 use unicode_segmentation::UnicodeSegmentation;
 
-use crate::SearchDirection;
+use crate::{SearchDirection, Terminal};
 
 #[derive(Default)]
 pub struct Row {
@@ -29,14 +33,21 @@ impl Row {
             .skip(start)
             .take(end - start)
         {
-            if grapheme == "\t" {
-                result.push_str(" ");
-            } else {
-                result.push_str(grapheme);
+            if let Some(c) = grapheme.chars().next() {
+                if c == '\t' {
+                    result.push_str(" ");
+                } else if c.is_ascii_digit() {
+                    (queue!(stdout(), SetForegroundColor(Color::Red))).unwrap();
+                    result.push_str(&format!("{}", c,)[..]);
+                    Terminal::reset_fg_color();
+                } else {
+                    result.push(c);
+                }
             }
         }
         result
     }
+
     pub fn len(&self) -> usize {
         self.len
     }
