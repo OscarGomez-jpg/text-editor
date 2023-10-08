@@ -1,8 +1,10 @@
 use crossterm::style::Color;
 
+#[derive(PartialEq)]
 pub enum Type {
     None,
     Number,
+    Match,
 }
 
 impl Type {
@@ -12,6 +14,11 @@ impl Type {
                 r: 180,
                 g: 126,
                 b: 141,
+            },
+            Type::Match => Color::Rgb {
+                r: 38,
+                g: 139,
+                b: 210,
             },
             _ => Color::Rgb {
                 r: 255,
