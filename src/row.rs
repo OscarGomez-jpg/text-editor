@@ -1,15 +1,13 @@
-use crossterm::{
-    queue,
-    style::{Color, SetForegroundColor},
-};
-use std::{cmp, io::stdout};
+use crossterm::style::{style, Color, Stylize};
+use std::cmp;
 use unicode_segmentation::UnicodeSegmentation;
 
-use crate::{SearchDirection, Terminal};
+use crate::{highlighting, SearchDirection, Terminal};
 
 #[derive(Default)]
 pub struct Row {
     string: String,
+    highlighting: Vec<highlighting::Type>,
     len: usize,
 }
 
@@ -17,6 +15,7 @@ impl From<&str> for Row {
     fn from(slice: &str) -> Self {
         Self {
             string: String::from(slice),
+            highlighting: Vec::new(),
             len: slice.graphemes(true).count(),
         }
     }
@@ -28,20 +27,23 @@ impl Row {
         let start = cmp::min(start, end);
         let mut result = String::new();
         #[allow(clippy::integer_arithmetic)]
-        for grapheme in self.string[..]
+        for (index, grapheme) in self.string[..]
             .graphemes(true)
+            .enumerate()
             .skip(start)
             .take(end - start)
         {
             if let Some(c) = grapheme.chars().next() {
+                let highlighting_type = self
+                    .highlighting
+                    .get(index)
+                    .unwrap_or(&highlighting::Type::None);
+                let tmp = style(c).with(highlighting_type.to_color());
+
                 if c == '\t' {
                     result.push_str(" ");
-                } else if c.is_ascii_digit() {
-                    (queue!(stdout(), SetForegroundColor(Color::Red))).unwrap();
-                    result.push_str(&format!("{}", c,)[..]);
-                    Terminal::reset_fg_color();
                 } else {
-                    result.push(c);
+                    result.push_str(&format!("{}", tmp));
                 }
             }
         }
@@ -51,9 +53,11 @@ impl Row {
     pub fn len(&self) -> usize {
         self.len
     }
+
     pub fn is_empty(&self) -> bool {
         self.len == 0
     }
+
     pub fn insert(&mut self, at: usize, c: char) {
         if at >= self.len() {
             self.string.push(c);
@@ -73,6 +77,7 @@ impl Row {
         self.len = length;
         self.string = result;
     }
+
     pub fn delete(&mut self, at: usize) {
         if at >= self.len() {
             return;
@@ -88,10 +93,12 @@ impl Row {
         self.len = length;
         self.string = result;
     }
+
     pub fn append(&mut self, new: &Self) {
         self.string = format!("{}{}", self.string, new.string);
         self.len += new.len;
     }
+
     pub fn split(&mut self, at: usize) -> Self {
         let mut row: String = String::new();
         let mut length = 0;
@@ -111,6 +118,7 @@ impl Row {
         self.len = length;
         Self {
             string: splitted_row,
+            highlighting: Vec::new(),
             len: splitted_length,
         }
     }
@@ -156,6 +164,18 @@ impl Row {
         }
 
         None
+    }
+
+    pub fn highlight(&mut self) {
+        let mut highlighting = Vec::new();
+        for c in self.string.chars() {
+            if c.is_ascii_digit() {
+                highlighting.push(highlighting::Type::Number);
+            } else {
+                highlighting.push(highlighting::Type::None);
+            }
+        }
+        self.highlighting = highlighting;
     }
 
     pub fn as_bytes(&self) -> &[u8] {
