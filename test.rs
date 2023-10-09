@@ -1,3 +1,5 @@
-121323123 fn main() {
+//Ah, ya entendí, es solamente con archivos con extensión
+
+fn main() {
   println!("Hola");
 }

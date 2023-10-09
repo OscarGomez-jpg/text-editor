@@ -71,11 +71,14 @@ impl Document {
         if at.y > self.rows.len() {
             return;
         }
+
         self.dirty = true;
+
         if c == '\n' {
             self.insert_newline(at);
             return;
         }
+
         if at.y == self.rows.len() {
             let mut row = Row::default();
             row.insert(0, c);
