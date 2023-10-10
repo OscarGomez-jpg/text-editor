@@ -8,6 +8,7 @@ use crate::{highlighting, HighlightingOptions, SearchDirection};
 pub struct Row {
     string: String,
     highlighting: Vec<highlighting::Type>,
+    pub is_highlighted: bool,
     len: usize,
 }
 
@@ -16,6 +17,7 @@ impl From<&str> for Row {
         Self {
             string: String::from(slice),
             highlighting: Vec::new(),
+            is_highlighted: false,
             len: slice.graphemes(true).count(),
         }
     }
@@ -119,6 +121,7 @@ impl Row {
         Self {
             string: splitted_row,
             highlighting: Vec::new(),
+            is_highlighted: false,
             len: splitted_length,
         }
     }
@@ -166,7 +169,7 @@ impl Row {
         None
     }
 
-    fn highlight_match(&mut self, word: Option<&str>) {
+    fn highlight_match(&mut self, word: &Option<String>) {
         if let Some(word) = word {
             if word.is_empty() {
                 return;
@@ -360,6 +363,36 @@ impl Row {
         false
     }
 
+    fn highlight_multiline_comment(
+        &mut self,
+        index: &mut usize,
+        opts: &HighlightingOptions,
+        c: char,
+        chars: &[char],
+    ) -> bool {
+        if opts.comments() && c == '/' && *index < chars.len() {
+            if let Some(next_char) = chars.get(index.saturating_add(1)) {
+                if *next_char == '*' {
+                    let closing_index =
+                        if let Some(closing_index) = self.string[*index + 2..].find("*/") {
+                            *index + closing_index + 4
+                        } else {
+                            chars.len()
+                        };
+
+                    for _ in *index..closing_index {
+                        self.highlighting.push(highlighting::Type::MiltilineComment);
+                        *index += 1;
+                    }
+
+                    return true;
+                }
+            };
+        }
+
+        false
+    }
+
     fn highlight_primary_keywords(
         &mut self,
         index: &mut usize,
@@ -388,12 +421,52 @@ impl Row {
         )
     }
 
-    pub fn highlight(&mut self, opts: &HighlightingOptions, word: Option<&str>) {
-        self.highlighting = Vec::new();
+    pub fn highlight(
+        &mut self,
+        opts: &HighlightingOptions,
+        word: &Option<String>,
+        start_with_comment: bool,
+    ) -> bool {
         let chars: Vec<char> = self.string.chars().collect();
+
+        if self.is_highlighted && word.is_none() {
+            if let Some(hl_type) = self.highlighting.last() {
+                if *hl_type == highlighting::Type::MiltilineComment
+                    && self.string.len() > 1
+                    && self.string[self.string.len() - 2..] == *"*/"
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        self.highlighting = Vec::new();
         let mut index = 0;
+        let mut in_ml_comment = start_with_comment;
+
+        if in_ml_comment {
+            let closing_index = if let Some(closing_index) = self.string.find("*/") {
+                closing_index + 2
+            } else {
+                chars.len()
+            };
+
+            for _ in 0..closing_index {
+                self.highlighting.push(highlighting::Type::MiltilineComment);
+            }
+
+            index = closing_index;
+        }
 
         while let Some(c) = chars.get(index) {
+            if self.highlight_multiline_comment(&mut index, &opts, *c, &chars) {
+                in_ml_comment = true;
+                continue;
+            }
+            in_ml_comment = false;
+
             if self.highlight_char(&mut index, opts, *c, &chars)
                 || self.highlight_comment(&mut index, opts, *c, &chars)
                 || self.highlight_numbers(&mut index, opts, *c, &chars)
@@ -409,6 +482,12 @@ impl Row {
         }
 
         self.highlight_match(word);
+        if in_ml_comment && &self.string[self.string.len().saturating_sub(2)..] != "*/" {
+            return true;
+        }
+
+        self.is_highlighted = true;
+        false
     }
 
     fn is_separator(c: char) -> bool {

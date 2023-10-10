@@ -1,5 +1,8 @@
 //Ah, ya entendí, es solamente con archivos con extensión
-
+/*
+Lo que se sufrio para poder colocar este comentario, ahora falta
+que soporte utf-8 finalmente, he terminado este proyecto :) añó
+*/
 fn main() {
   let c = 'c';
   let numbers = 123456;
