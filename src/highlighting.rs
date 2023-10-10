@@ -6,6 +6,8 @@ pub enum Type {
     Number,
     Match,
     String,
+    Character,
+    Comment,
 }
 
 impl Type {
@@ -25,6 +27,16 @@ impl Type {
                 r: 211,
                 g: 54,
                 b: 130,
+            },
+            Type::Character => Color::Rgb {
+                r: 108,
+                g: 113,
+                b: 196,
+            },
+            Type::Comment => Color::Rgb {
+                r: 133,
+                g: 153,
+                b: 0,
             },
             _ => Color::Rgb {
                 r: 255,

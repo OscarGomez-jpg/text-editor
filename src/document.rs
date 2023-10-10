@@ -91,7 +91,7 @@ impl Document {
             row.highlight(self.file_type.highlighting_options(), None);
         }
     }
-    #[allow(clippy::integer_arithmetic, clippy::indexing_slicing)]
+    #[allow(clippy::arithmetic_side_effects, clippy::indexing_slicing)]
     pub fn delete(&mut self, at: &Position) {
         let len = self.rows.len();
         if at.y >= len {
