@@ -7,6 +7,8 @@ use std::{
 
 use crate::{terminal::Terminal, Document, Row};
 
+// Definition of two constants named STATUS_BG_COLOR and STATUS_FG_COLOR,
+// representing background and foreground colors.
 const STATUS_BG_COLOR: Color = Color::Rgb {
     r: 63,
     g: 63,
@@ -17,27 +19,139 @@ const STATUS_FG_COLOR: Color = Color::Rgb {
     g: 239,
     b: 239,
 };
+
+// VERSION constant stores a reference to a string that holds the version information
+// obtained from the environment variable CARGO_PKG_VERSION. This likely represents the
+// version number of a Rust package or application.
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+// QUIT_TIMES constant is assigned the value 3 and represents a limit on the number
+// of allowed quit times. This value is an unsigned 8-bit integer (u8).
 const QUIT_TIMES: u8 = 3;
 
+/// An enum representing the search direction.
+///
+/// This enum is used to indicate the direction of a search operation,
+/// and it can have two possible values: `Forward` and `Backward`.
+///
+/// - `Forward`: Represents a forward search direction.
+/// - `Backward`: Represents a backward search direction.
+///
+/// # Examples
+///
+/// ```
+/// use my_module::SearchDirection;
+///
+/// let direction = SearchDirection::Forward;
+/// assert_eq!(direction, SearchDirection::Forward);
+///
+/// let opposite_direction = SearchDirection::Backward;
+/// assert_eq!(opposite_direction, SearchDirection::Backward);
+/// ```
 #[derive(PartialEq, Clone, Copy)]
 pub enum SearchDirection {
     Forward,
     Backward,
 }
 
+/// A struct representing a 2D position.
+///
+/// This struct holds the X and Y coordinates of a point in a 2D space.
+///
+/// # Fields
+///
+/// - `x`: The X coordinate, represented as a `usize`.
+/// - `y`: The Y coordinate, represented as a `usize`.
+///
+/// # Default
+///
+/// This struct implements the `Default` trait, allowing you to create instances
+/// with default values using `Position::default()`, which sets both `x` and `y` to 0.
+///
+/// # Clone
+///
+/// This struct implements the `Clone` trait, allowing you to create cloned copies
+/// of `Position` instances.
+///
+/// # Examples
+///
+/// ```
+/// use my_module::Position;
+///
+/// let position = Position { x: 10, y: 20 };
+/// assert_eq!(position.x, 10);
+/// assert_eq!(position.y, 20);
+///
+/// let default_position = Position::default();
+/// assert_eq!(default_position.x, 0);
+/// assert_eq!(default_position.y, 0);
+///
+/// let cloned_position = position.clone();
+/// assert_eq!(cloned_position, position);
+/// ```
 #[derive(Default, Clone)]
 pub struct Position {
     pub x: usize,
     pub y: usize,
 }
 
+/// A struct representing a status message with text and a timestamp.
+///
+/// This struct holds a text message and the time it was created, represented
+/// as an `Instant` instance.
+///
+/// # Fields
+///
+/// - `text`: The text of the status message, represented as a `String`.
+/// - `time`: The timestamp when the status message was created, represented as an `Instant`.
+///
+/// # Examples
+///
+/// ```
+/// use my_module::StatusMessage;
+/// use std::time::Instant;
+///
+/// let timestamp = Instant::now();
+/// let message = StatusMessage {
+///     text: "Hello, World!".to_string(),
+///     time: timestamp,
+/// };
+///
+/// assert_eq!(message.text, "Hello, World!");
+/// assert_eq!(message.time, timestamp);
+/// ```
+///
+/// # Creation
+///
+/// You can create a `StatusMessage` instance from a `String` message using the `from` method.
+///
+/// ```
+/// use my_module::StatusMessage;
+///
+/// let message = StatusMessage::from("An important message".to_string());
+/// ```
 struct StatusMessage {
     text: String,
     time: Instant,
 }
 
 impl StatusMessage {
+    /// Creates a new `StatusMessage` instance from a given text message.
+    ///
+    /// This method takes a `String` message and generates a `StatusMessage` instance
+    /// with the provided message text and the current timestamp.
+    ///
+    /// # Arguments
+    ///
+    /// - `message`: A `String` containing the text message.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use my_module::StatusMessage;
+    ///
+    /// let message = StatusMessage::from("An important message".to_string());
+    /// ```
     fn from(message: String) -> Self {
         Self {
             text: message,
@@ -46,6 +160,38 @@ impl StatusMessage {
     }
 }
 
+/// A struct representing a text editor.
+///
+/// This struct encapsulates the state and functionality of a simple text editor.
+/// It contains various fields to store information such as the editor's terminal,
+/// cursor position, document, and status message, among others.
+///
+/// # Fields
+///
+/// - `should_quit`: A boolean flag indicating whether the editor should quit.
+/// - `terminal`: An instance of the `Terminal` struct for interacting with the terminal.
+/// - `cursor_position`: The current position of the cursor, represented as a `Position`.
+/// - `offset`: The offset position, often used for scrolling, represented as a `Position`.
+/// - `document`: An instance of the `Document` struct representing the text document.
+/// - `status_message`: An instance of the `StatusMessage` struct for displaying status messages.
+/// - `quit_times`: An unsigned 8-bit integer (`u8`) representing the number of allowed quit times.
+/// - `highlighted_word`: An optional `String` representing a currently highlighted word.
+///
+/// # Examples
+///
+/// ```
+/// use my_module::Editor;
+///
+/// // Create a new text editor instance.
+/// let mut editor = Editor::new();
+///
+/// // Initialize the editor's state and interact with it.
+/// editor.open_document("example.txt");
+/// editor.insert_text("Hello, World!");
+/// editor.move_cursor(8, 0);
+/// editor.delete_word();
+/// editor.save_document();
+/// ```
 pub struct Editor {
     should_quit: bool,
     terminal: Terminal,
