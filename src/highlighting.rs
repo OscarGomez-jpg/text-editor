@@ -27,9 +27,9 @@ impl Type {
                 b: 210,
             },
             Type::String => Color::Rgb {
-                r: 211,
-                g: 54,
-                b: 130,
+                r: 205,
+                g: 92,
+                b: 8,
             },
             Type::Character => Color::Rgb {
                 r: 108,
@@ -37,15 +37,11 @@ impl Type {
                 b: 196,
             },
             Type::Comment | Type::MiltilineComment => Color::Rgb {
-                r: 133,
-                g: 153,
-                b: 0,
+                r: 245,
+                g: 232,
+                b: 183,
             },
-            Type::PrimaryKeywords => Color::Rgb {
-                r: 181,
-                g: 137,
-                b: 0,
-            },
+            Type::PrimaryKeywords => Color::Red,
             Type::SecondaryKeywords => Color::Rgb {
                 r: 255,
                 g: 161,
