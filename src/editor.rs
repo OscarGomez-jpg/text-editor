@@ -276,6 +276,10 @@ impl Editor {
                 self.document.insert(&self.cursor_position, '\n');
                 self.move_cursor(KeyCode::Right);
             }
+            KeyCode::Tab => {
+                self.document.insert(&self.cursor_position, '\t');
+                self.move_cursor(KeyCode::Tab);
+            }
             KeyCode::Char(c) => {
                 self.document.insert(&self.cursor_position, c);
                 self.move_cursor(KeyCode::Right);
@@ -451,6 +455,14 @@ impl Editor {
             }
             KeyCode::Home => x = 0,
             KeyCode::End => x = width,
+            KeyCode::Tab => {
+                if x < width {
+                    x += 4;
+                } else if y < height {
+                    y += 1;
+                    x = 0;
+                }
+            }
             _ => (),
         }
 

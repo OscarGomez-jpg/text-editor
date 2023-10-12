@@ -81,7 +81,14 @@ impl Document {
         } else {
             #[allow(clippy::indexing_slicing)]
             let row = &mut self.rows[at.y];
-            row.insert(at.x, c);
+
+            if c == '\t' {
+                for _ in 0..4 {
+                    row.insert(at.x, ' ');
+                }
+            } else {
+                row.insert(at.x, c);
+            }
         }
 
         self.unhighlight_rows(at.y);
@@ -101,7 +108,9 @@ impl Document {
         if at.y >= len {
             return;
         }
+
         self.dirty = true;
+
         if at.x == self.rows[at.y].len() && at.y + 1 < len {
             let next_row = self.rows.remove(at.y + 1);
             let row = &mut self.rows[at.y];
