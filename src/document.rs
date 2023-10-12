@@ -8,7 +8,7 @@ use std::io::{Error, Write};
 #[derive(Default)]
 pub struct Document {
     rows: Vec<Row>,
-    pub file_name: Option<String>,
+    file_name: Option<String>,
     dirty: bool,
     file_type: FileType,
 }
@@ -25,7 +25,7 @@ impl Document {
 
         Ok(Self {
             rows,
-            file_name: Some(filename.to_string()),
+            file_name: Some(filename.to_owned()),
             dirty: false,
             file_type,
         })
@@ -57,6 +57,7 @@ impl Document {
             return;
         }
 
+        #[allow(clippy::indexing_slicing)]
         let current_row = &mut self.rows[at.y];
         let new_row = current_row.split(at.x);
 
@@ -90,7 +91,7 @@ impl Document {
         let start = start.saturating_sub(1);
 
         for row in self.rows.iter_mut().skip(start) {
-            row.is_highlighted = false;
+            row.set_is_highlighted(false);
         }
     }
 
@@ -114,6 +115,7 @@ impl Document {
     }
 
     pub fn save(&mut self) -> Result<(), Error> {
+        //Do it more verbose wrapping it into a container
         if let Some(file_name) = &self.file_name {
             let mut file = fs::File::create(file_name)?;
             self.file_type = FileType::from(file_name);
@@ -144,7 +146,7 @@ impl Document {
         #[allow(clippy::indexing_slicing)]
         for row in &mut self.rows[..until] {
             start_with_comment = row.highlight(
-                &self.file_type.highlighting_options(),
+                self.file_type.highlighting_options(),
                 word,
                 start_with_comment,
             );
@@ -172,7 +174,7 @@ impl Document {
 
         for _ in start..end {
             if let Some(row) = self.rows.get(position.y) {
-                if let Some(x) = row.find(&query, position.x, direction) {
+                if let Some(x) = row.find(query, position.x, direction) {
                     position.x = x;
                     return Some(position);
                 }
@@ -194,5 +196,13 @@ impl Document {
 
     pub fn is_dirty(&self) -> bool {
         self.dirty
+    }
+
+    pub fn get_file_name(&self) -> &Option<String> {
+        &self.file_name
+    }
+
+    pub fn set_file_name(&mut self, new_file_name: Option<String>) {
+        self.file_name = new_file_name;
     }
 }

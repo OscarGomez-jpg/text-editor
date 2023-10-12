@@ -8,7 +8,7 @@ use crate::{highlighting, HighlightingOptions, SearchDirection};
 pub struct Row {
     string: String,
     highlighting: Vec<highlighting::Type>,
-    pub is_highlighted: bool,
+    is_highlighted: bool,
     len: usize,
 }
 
@@ -28,7 +28,8 @@ impl Row {
         let end = cmp::min(end, self.string.len());
         let start = cmp::min(start, end);
         let mut result = String::new();
-        #[allow(clippy::integer_arithmetic)]
+
+        #[allow(clippy::arithmetic_side_effects)]
         for (index, grapheme) in self.string[..]
             .graphemes(true)
             .enumerate()
@@ -56,7 +57,7 @@ impl Row {
         self.len
     }
 
-    pub fn is_empty(&self) -> bool {
+    pub fn _is_empty(&self) -> bool {
         self.len == 0
     }
 
@@ -496,5 +497,9 @@ impl Row {
 
     pub fn as_bytes(&self) -> &[u8] {
         self.string.as_bytes()
+    }
+
+    pub fn set_is_highlighted(&mut self, highlighted: bool) {
+        self.is_highlighted = highlighted
     }
 }

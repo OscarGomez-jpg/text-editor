@@ -2,8 +2,10 @@ use crossterm::{event::KeyCode, style::Color};
 use std::{
     env,
     io::{self},
-    time::{Duration, Instant},
+    time::Instant,
 };
+
+use core::time::Duration;
 
 use crate::{terminal::Terminal, Document, Row};
 
@@ -224,7 +226,7 @@ impl Editor {
 
         Self {
             should_quit: false,
-            terminal: Terminal::default().expect("Jesus Christ, what have you done?"),
+            terminal: Terminal::default(),
             document,
             cursor_position: Position::default(),
             offset: Position::default(),
@@ -242,7 +244,7 @@ impl Editor {
             }
 
             if self.should_quit {
-                (crossterm::terminal::disable_raw_mode()).unwrap();
+                crossterm::terminal::disable_raw_mode().ok();
                 break;
             }
 
@@ -379,8 +381,8 @@ impl Editor {
 
     fn scroll(&mut self) {
         let Position { x, y } = self.cursor_position;
-        let width = self.terminal.size().width as usize;
-        let height = self.terminal.size().height as usize;
+        let width: usize = self.terminal.size().width.try_into().unwrap_or_default();
+        let height: usize = self.terminal.size().height.try_into().unwrap_or_default();
         let offset = &mut self.offset;
 
         if y < offset.y {
@@ -397,7 +399,7 @@ impl Editor {
     }
 
     fn move_cursor(&mut self, key_selection: KeyCode) {
-        let terminal_height = self.terminal.size().height as usize;
+        let terminal_height = self.terminal.size().height.try_into().unwrap_or_default();
         let Position { mut y, mut x } = self.cursor_position;
         let height = self.document.len();
         let mut width = if let Some(row) = self.document.row(y) {
@@ -479,7 +481,7 @@ impl Editor {
                 Some(
                     self.offset
                         .y
-                        .saturating_add(self.terminal.size().height as usize),
+                        .saturating_add(self.terminal.size().height.try_into().unwrap_or_default()),
                 ),
             );
 
@@ -497,7 +499,7 @@ impl Editor {
     }
 
     fn save(&mut self) {
-        if self.document.file_name.is_none() {
+        if self.document.get_file_name().is_none() {
             let new_name = self.prompt("Save as: ", |_, _, _| {}).unwrap_or(None);
 
             if new_name.is_none() {
@@ -505,7 +507,7 @@ impl Editor {
                 return;
             }
 
-            self.document.file_name = new_name;
+            self.document.set_file_name(new_name);
         }
 
         if self.document.save().is_ok() {
@@ -517,7 +519,7 @@ impl Editor {
 
     fn draw_welcome_message(&self) {
         let mut welcome_message = format!("Voider -- version {VERSION}");
-        let width = self.terminal.size().width as usize;
+        let width: usize = self.terminal.size().width.try_into().unwrap_or_default();
         let len = welcome_message.len();
         let padding = width.saturating_sub(len) / 2;
         let spaces = " ".repeat(padding.saturating_sub(1));
@@ -529,7 +531,7 @@ impl Editor {
     }
 
     fn draw_row(&self, row: &Row) {
-        let width = self.terminal.size().width as usize;
+        let width: usize = self.terminal.size().width.try_into().unwrap_or_default();
         let start = self.offset.x;
         let end = self.offset.x.saturating_add(width);
         let row = row.render(start, end);
@@ -542,10 +544,11 @@ impl Editor {
 
         for terminal_row in 0..height {
             Terminal::clear_current_line();
-            if let Some(row) = self
-                .document
-                .row(self.offset.y.saturating_add(terminal_row as usize))
-            {
+            if let Some(row) = self.document.row(
+                self.offset
+                    .y
+                    .saturating_add(terminal_row.try_into().unwrap_or_default()),
+            ) {
                 self.draw_row(row);
             } else if self.document.is_empty() && terminal_row == height / 3 {
                 self.draw_welcome_message();
@@ -557,7 +560,7 @@ impl Editor {
 
     fn draw_status_bar(&self) {
         let mut status;
-        let width = self.terminal.size().width as usize;
+        let width: usize = self.terminal.size().width.try_into().unwrap_or_default();
 
         let modifier_indicator = if self.document.is_dirty() {
             " (modified)"
@@ -567,7 +570,7 @@ impl Editor {
 
         let mut file_name = "[No Name]".to_string();
 
-        if let Some(name) = &self.document.file_name {
+        if let Some(name) = &self.document.get_file_name() {
             file_name = name.clone();
             file_name.truncate(20);
         }
@@ -603,7 +606,7 @@ impl Editor {
         let message = &self.status_message;
         if message.time.elapsed() < Duration::new(5, 0) {
             let mut text = message.text.clone();
-            text.truncate(self.terminal.size().width as usize);
+            text.truncate(self.terminal.size().width.try_into().unwrap_or_default());
             print!("{text}");
         }
     }

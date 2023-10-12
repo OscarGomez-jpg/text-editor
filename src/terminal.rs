@@ -19,18 +19,29 @@ pub struct Terminal {
     size: Size,
 }
 
-impl Terminal {
-    pub fn default() -> Result<Self, std::io::Error> {
-        let size = terminal::size()?;
+impl Default for Terminal {
+    fn default() -> Self {
+        let size = terminal::size();
         terminal::enable_raw_mode().ok();
-        Ok(Self {
-            size: Size {
-                width: size.0,
-                height: size.1.saturating_sub(2),
-            },
-        })
-    }
 
+        match size {
+            Ok(res) => Self {
+                size: Size {
+                    width: res.0,
+                    height: res.1.saturating_sub(2),
+                },
+            },
+            Err(_res) => Self {
+                size: Size {
+                    width: 16,
+                    height: 20,
+                },
+            },
+        }
+    }
+}
+
+impl Terminal {
     #[must_use]
     pub fn size(&self) -> &Size {
         &self.size
@@ -66,10 +77,11 @@ impl Terminal {
         Self::execute_action(Clear(ClearType::All));
     }
 
+    #[allow(clippy::as_conversions)]
     pub fn cursor_position(position: &Position) {
         let Position { x, y } = position;
-        let x = *x as u16;
-        let y = *y as u16;
+        let x: u16 = *x as u16;
+        let y: u16 = *y as u16;
 
         Self::execute_action(MoveTo(x, y));
     }
