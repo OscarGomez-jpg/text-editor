@@ -10,4 +10,9 @@ fn main() {
     
     /*Cosa numero dos*/
     let v: Vec<String> = Vec::new();
+    v.push("A");
+    for i in v {
+        print("{i}")
+    }
+    //Ah si, menos mal, porque yo no uso intellij para rust
 }
