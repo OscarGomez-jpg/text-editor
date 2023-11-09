@@ -31,22 +31,6 @@ impl Document {
         })
     }
 
-    pub fn file_type(&self) -> String {
-        self.file_type.name()
-    }
-
-    pub fn row(&self, index: usize) -> Option<&Row> {
-        self.rows.get(index)
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.rows.is_empty()
-    }
-
-    pub fn len(&self) -> usize {
-        self.rows.len()
-    }
-
     fn insert_newline(&mut self, at: &Position) {
         if at.y > self.rows.len() {
             return;
@@ -73,12 +57,15 @@ impl Document {
         self.dirty = true;
 
         if c == '\n' {
+            // New line
             self.insert_newline(at);
         } else if at.y == self.rows.len() {
+            // Insert at the beginning
             let mut row = Row::default();
             row.insert(0, c);
             self.rows.push(row);
         } else {
+            // Insert any other character
             #[allow(clippy::indexing_slicing)]
             let row = &mut self.rows[at.y];
 
@@ -86,6 +73,9 @@ impl Document {
                 for _ in 0..4 {
                     row.insert(at.x, ' ');
                 }
+            } else if c == '{' {
+                row.insert(at.x, '}');
+                row.insert(at.x, '{');
             } else {
                 row.insert(at.x, c);
             }
@@ -213,5 +203,21 @@ impl Document {
 
     pub fn set_file_name(&mut self, new_file_name: Option<String>) {
         self.file_name = new_file_name;
+    }
+
+    pub fn file_type(&self) -> String {
+        self.file_type.name()
+    }
+
+    pub fn row(&self, index: usize) -> Option<&Row> {
+        self.rows.get(index)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.rows.is_empty()
+    }
+
+    pub fn len(&self) -> usize {
+        self.rows.len()
     }
 }

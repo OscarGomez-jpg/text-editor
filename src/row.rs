@@ -69,18 +69,15 @@ impl Row {
         }
 
         let mut result: String = String::new();
-        let mut length = 0;
 
         for (index, grapheme) in self.string[..].graphemes(true).enumerate() {
-            length += 1;
             if index == at {
-                length += 1;
                 result.push(c);
             }
             result.push_str(grapheme);
         }
 
-        self.len = length;
+        self.len += 1;
         self.string = result;
     }
 
@@ -89,14 +86,12 @@ impl Row {
             return;
         }
         let mut result: String = String::new();
-        let mut length = 0;
         for (index, grapheme) in self.string[..].graphemes(true).enumerate() {
             if index != at {
-                length += 1;
                 result.push_str(grapheme);
             }
         }
-        self.len = length;
+        self.len -= 1;
         self.string = result;
     }
 
@@ -109,17 +104,16 @@ impl Row {
         let mut row: String = String::new();
         let mut length = 0;
         let mut splitted_row: String = String::new();
-        let mut splitted_length = 0;
         for (index, grapheme) in self.string[..].graphemes(true).enumerate() {
             if index < at {
                 length += 1;
                 row.push_str(grapheme);
             } else {
-                splitted_length += 1;
                 splitted_row.push_str(grapheme);
             }
         }
 
+        let splitted_length = self.len - length;
         self.string = row;
         self.len = length;
         Self {
@@ -359,7 +353,7 @@ impl Row {
         }
 
         for word in keywords {
-            if self.highlight_str(index, &word, chars, hl_type) {
+            if self.highlight_str(index, word, chars, hl_type) {
                 return true;
             }
         }
@@ -374,7 +368,7 @@ impl Row {
         c: char,
         chars: &[char],
     ) -> bool {
-        if opts.comments() && c == '/' && *index < chars.len() {
+        if opts.multiline_comments() && c == '/' && *index < chars.len() {
             if let Some(next_char) = chars.get(index.saturating_add(1)) {
                 if *next_char == '*' {
                     let closing_index =
@@ -434,15 +428,6 @@ impl Row {
         let chars: Vec<char> = self.string.chars().collect();
 
         if self.is_highlighted && word.is_none() {
-            if let Some(hl_type) = self.highlighting.last() {
-                if *hl_type == highlighting::Type::MiltilineComment
-                    && self.string.len() > 1
-                    && self.string[self.string.len() - 2..] == *"*/"
-                {
-                    return true;
-                }
-            }
-
             return false;
         }
 
@@ -465,7 +450,7 @@ impl Row {
         }
 
         while let Some(c) = chars.get(index) {
-            if self.highlight_multiline_comment(&mut index, &opts, *c, &chars) {
+            if self.highlight_multiline_comment(&mut index, opts, *c, &chars) {
                 in_ml_comment = true;
                 continue;
             }
@@ -474,8 +459,8 @@ impl Row {
             if self.highlight_char(&mut index, opts, *c, &chars)
                 || self.highlight_comment(&mut index, opts, *c, &chars)
                 || self.highlight_numbers(&mut index, opts, *c, &chars)
-                || self.highlight_primary_keywords(&mut index, &opts, &chars)
-                || self.highlight_secondary_keywords(&mut index, &opts, &chars)
+                || self.highlight_primary_keywords(&mut index, opts, &chars)
+                || self.highlight_secondary_keywords(&mut index, opts, &chars)
                 || self.highlight_string(&mut index, opts, *c, &chars)
             {
                 continue;

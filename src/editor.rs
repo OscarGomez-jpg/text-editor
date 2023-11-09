@@ -7,6 +7,8 @@ use std::{
 
 use core::time::Duration;
 
+use unicode_segmentation::UnicodeSegmentation;
+
 use crate::{terminal::Terminal, Document, Row};
 
 // Definition of two constants named STATUS_BG_COLOR and STATUS_FG_COLOR,
@@ -331,7 +333,7 @@ impl Editor {
                 if let Some(position) =
                     editor
                         .document
-                        .find(&query, &editor.cursor_position, direction)
+                        .find(query, &editor.cursor_position, direction)
                 {
                     editor.cursor_position = position;
                     editor.scroll();
@@ -361,7 +363,13 @@ impl Editor {
             self.refresh_screen()?;
             let key = Terminal::read_key();
             match key {
-                KeyCode::Backspace => result.truncate(result.len().saturating_sub(1)),
+                KeyCode::Backspace => {
+                    let graphemes_cnt = result.graphemes(true).count();
+                    result = result
+                        .graphemes(true)
+                        .take(graphemes_cnt.saturating_sub(1))
+                        .collect();
+                }
                 KeyCode::Enter => break,
                 KeyCode::Char(c) => {
                     if !c.is_control() {
